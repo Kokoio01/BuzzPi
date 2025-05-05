@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}About - Team Buzzer System{% endblock %}
+
+{% block additional_styles %}
+.about-container {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+}
+
+.about-card {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.about-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+
+.about-content {
+    line-height: 1.8;
+    color: #444;
+}
+
+.center {
+    text-align: center;
+}
+{% endblock %}
+
+{% block content %}
+<div class="about-container">
+    <div class="about-card">
+        <h2 class="about-title">About BuzzPi</h2>
+        <div class="about-content">
+            <p><strong>BuzzPi</strong> is a web-based buzzing system designed for competitions and team games. It allows multiple teams to compete by buzzing in their answers, with precise timing and order tracking.</p>
+            <p>Built with <strong>Django</strong> and <strong>WebSocket</strong> technology, BuzzPi enables real-time interaction in offline environments, making it perfect for youth camps, game shows, and other team-based activities.</p>
+            <br>
+            <h4 class="center">Sounds:</h4>
+            <div class="center">
+                <p>The buzzer sound used in BuzzPi is sourced from <a href="https://freesound.org/people/5ro4/sounds/611111/" target="_blank" class="sound-link">bell ding 3.wav</a> by <a href="https://freesound.org/people/5ro4/" target="_blank">5ro4</a>, licensed under <a href="http://creativecommons.org/publicdomain/zero/1.0/" target="_blank">Creative Commons 0</a>.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,492 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Admin - Team Buzzer System{% endblock %}
+
+{% block additional_styles %}
+.admin-container {
+    max-width: 100%;
+    margin: 0;
+    padding: 15px;
+}
+
+.card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.card h2 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 20px;
+}
+
+.team-list {
+    list-style: none;
+}
+
+.team-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border: none;
+    margin-bottom: 15px;
+    border-radius: 6px;
+    background-color: #f8f9fa;
+}
+
+.team-item .team-color {
+    width: 32px;
+    height: 32px;
+}
+
+.team-name {
+    flex-grow: 1;
+    font-size: 16px;
+    margin: 0 15px;
+}
+
+.btn {
+    padding: 12px 20px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    min-width: 100px;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    color: white;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+.btn:hover {
+    opacity: 0.9;
+}
+
+.add-team-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.form-input {
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 16px;
+    width: 100%;
+}
+
+.system-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.alert {
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    background-color: #cce5ff;
+    color: #004085;
+}
+
+.color-preview {
+    width: 100%;
+    height: 45px;
+    position: relative;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+input[type="color"] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
+input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+    border-radius: 0;
+}
+
+input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 0;
+}
+
+input[type="color"]::-moz-color-swatch {
+    border: none;
+    border-radius: 0;
+}
+
+.status-card {
+    text-align: center;
+    padding: 20px !important;
+    margin: -15px -15px 15px -15px;
+    border-radius: 0;
+    background-color: #f8f9fa;
+}
+
+.status-display {
+    font-size: 28px;
+    font-weight: bold;
+    padding: 25px;
+    border-radius: 12px;
+    margin: 15px 0; 
+    background-color: white;
+    transition: all 0.3s ease;
+    min-height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.status-display.active {
+    color: white;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+.timer {
+    font-size: 18px;
+    color: #666;
+    margin-top: 10px;
+}
+
+.toggle-switch {
+    display: flex;
+    align-items: center;
+    padding: 15px 0;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.toggle-switch label {
+    margin-left: 15px;
+    color: #333;
+    user-select: none;
+    font-size: 16px;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 30px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 24px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: #007bff;
+}
+
+input:checked + .slider:before {
+    transform: translateX(30px);
+}
+
+@media (min-width: 768px) {
+    .admin-container {
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 20px;
+    }
+
+    .status-card {
+        margin: 0 0 20px 0;
+        border-radius: 12px;
+    }
+
+    .add-team-form {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .color-preview {
+        width: 45px;
+        min-width: 45px;
+    }
+
+    .system-controls {
+        flex-direction: row;
+        justify-content: flex-start;
+    }
+
+    .system-controls .btn {
+        width: auto;
+    }
+}
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <!-- Buzzer Status -->
+    <div class="card status-card">
+        <h2>Current Buzzer Status</h2>
+        <div id="status-display" class="status-display">
+            Waiting for teams to buzz in...
+        </div>
+        <div id="timer" class="timer"></div>
+    </div>
+
+    <!-- System Controls -->
+    <div class="card">
+        <h2>System Controls</h2>
+        <div class="toggle-switch">
+            <div class="switch">
+                <input type="checkbox" id="selfResetToggle" checked>
+                <span class="slider"></span>
+            </div>
+            <label for="selfResetToggle">Allow teams to reset their own buzzers</label>
+        </div>
+        <div class="system-controls">
+            <button class="btn btn-primary" onclick="resetAllBuzzers()">Reset All Buzzers</button>
+            <button class="btn btn-danger" onclick="clearAllTeams()">Clear All Teams</button>
+        </div>
+    </div>
+
+    <!-- Team Management -->
+    <div class="card">
+        <h2>Team Management</h2>
+        <div class="alert">
+            Add teams and choose their colors. Each team needs a unique name and color.
+        </div>
+        
+        <form class="add-team-form" id="addTeamForm" onsubmit="addTeam(event)">
+            <input type="text" class="form-input" placeholder="Team Name" id="teamName" required>
+            <div class="color-preview">
+                <input type="color" id="teamColor" value="#ff0000">
+            </div>
+            <button type="submit" class="btn btn-primary">Add Team</button>
+        </form>
+
+        <ul class="team-list" id="teamList">
+            {% for team in teams %}
+            <li class="team-item">
+                <div class="team-color" style="background-color: {{ team.color }}"></div>
+                <span class="team-name">{{ team.name }}</span>
+                <button class="btn btn-danger" onclick="removeTeam({{ team.id }})">Remove</button>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block additional_scripts %}
+<script>
+    let socket = null;
+let timer = null;
+let timerStart = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    connectWebSocket();
+});
+
+function updateConnectionStatus(connected) {
+    const status = document.getElementById('connection-status');
+    status.className = 'connection-status ' + (connected ? 'connected' : 'disconnected');
+    status.textContent = connected ? 'Connected' : 'Disconnected';
+}
+
+function connectWebSocket() {
+    const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    socket = new WebSocket(`${wsScheme}://${window.location.host}/ws/buzzer/`);
+
+    socket.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        handleWebSocketMessage(data);
+    };
+
+    socket.onopen = function() {
+        updateConnectionStatus(true);
+        socket.send(JSON.stringify({ action: 'get_state' }));
+    };
+
+    socket.onclose = function() {
+        updateConnectionStatus(false);
+        setTimeout(connectWebSocket, 1000);
+    };
+}
+
+// Update to handle any errors
+function handleWebSocketMessage(data) {
+    if (data.type === 'buzzer_type') {
+        if (data.action === 'buzz') {
+            updateBuzzerStatus(data.team_name, data.timestamp, data.color);
+        } else if (data.action === 'reset') {
+            updateBuzzerStatus(null, null, null);
+        }
+    } else if (data.type === 'initial_state') {
+        // Handle initial state
+        if (data.current_status) {
+            updateBuzzerStatus(
+                data.current_status.team_name,
+                data.current_status.timestamp,
+                data.current_status.color
+            );
+        }
+        if (data.teams) {
+            updateTeamList(data.teams);
+        }
+        if (data.settings) {
+            updateSettings(data.settings);
+        }
+    } else if (data.type === 'team_list') {
+        updateTeamList(data.teams);
+    } else if (data.type === 'settings_update') {
+        updateSettings(data.settings);
+    } else if (data.error) {
+        alert(data.error);  // Show any errors to admin
+    }
+}
+
+function updateBuzzerStatus(teamName, timestamp, color) {
+    const statusDisplay = document.getElementById('status-display');
+    if (teamName) {
+        statusDisplay.textContent = `${teamName} buzzed in first!`;
+        statusDisplay.classList.add('active');
+        statusDisplay.style.backgroundColor = color || '#28a745';
+        startTimer(timestamp);
+    } else {
+        statusDisplay.textContent = 'Waiting for teams to buzz in...';
+        statusDisplay.classList.remove('active');
+        statusDisplay.style.backgroundColor = 'white';
+        stopTimer();
+    }
+}
+
+function startTimer(timestamp) {
+    timerStart = timestamp;
+    updateTimer();
+    if (timer) clearInterval(timer);
+    timer = setInterval(updateTimer, 100);
+}
+
+function stopTimer() {
+    if (timer) {
+        clearInterval(timer);
+        timer = null;
+    }
+    document.getElementById('timer').textContent = '';
+}
+
+function updateTimer() {
+    const now = Date.now();
+    const elapsed = (now - timerStart) / 1000;
+    document.getElementById('timer').textContent = `Time elapsed: ${elapsed.toFixed(3)}s`;
+}
+
+function updateTeamList(teams) {
+    const teamList = document.getElementById('teamList');
+    teamList.innerHTML = teams.map(team => `
+        <li class="team-item">
+            <div class="team-color" style="background-color: ${team.color}"></div>
+            <span class="team-name">${team.name}</span>
+            <button class="btn btn-danger" onclick="removeTeam(${team.id})">Remove</button>
+        </li>
+    `).join('');
+}
+
+function addTeam(event) {
+    event.preventDefault();
+    const name = document.getElementById('teamName').value;
+    const color = document.getElementById('teamColor').value;
+    socket.send(JSON.stringify({
+        type: 'add_team',
+        name: name,
+        color: color
+    }));
+    document.getElementById('teamName').value = '';
+}
+
+function removeTeam(teamId) {
+    socket.send(JSON.stringify({
+        type: 'remove_team',
+        team_id: teamId
+    }));
+}
+
+function resetAllBuzzers() {
+    socket.send(JSON.stringify({
+        type: 'reset_admin'  // Changed from type to action
+    }));
+}
+
+function clearAllTeams() {
+    if (confirm('Are you sure you want to remove all teams?')) {
+        socket.send(JSON.stringify({
+            type: 'clear_teams'
+        }));
+    }
+}
+
+function updateSettings(settings) {
+    if (settings.hasOwnProperty('allow_self_reset')) {
+        document.getElementById('selfResetToggle').checked = settings.allow_self_reset;
+    }
+}
+
+document.getElementById('selfResetToggle').addEventListener('change', function(e) {
+    socket.send(JSON.stringify({
+        type: 'set_self_reset',
+        enabled: e.target.checked
+    }));
+});
+</script>
+{% endblock %}

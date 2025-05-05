@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Team Buzzer System{% endblock %}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            background-color: #f8f9fa;
+            min-height: 100vh;
+            padding-top: 70px;
+        }
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            height: 70px;
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+            z-index: 100;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .header-center {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+        }
+
+        .title {
+            font-size: 28px;  /* Reduced from 35px */
+            font-weight: bolder;
+            color: #333;
+        }
+
+        .user-status {
+            font-size: 14px;
+            color: #666;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 150px;  /* Limit width on mobile */
+        }
+
+        .connection-status {
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background-color: #eee;
+            opacity: 0.8;
+            white-space: nowrap;
+        }
+
+        .connection-status.connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .connection-status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        @media (max-width: 600px) {
+            .header {
+                padding: 20px 16px;  /* Reduced side padding */
+            }
+
+            .title {
+                font-size: 24px;  /* Further reduced for mobile */
+            }
+
+            .header-right {
+                gap: 12px;  /* Reduced gap */
+            }
+
+            .user-status {
+                max-width: 100px;  /* Even more limited on mobile */
+                display: none;  /* Hide username on very small screens */
+            }
+
+            .connection-status {
+                font-size: 11px;
+                padding: 1px 6px;
+                display: none;  /* Hide on very small screens */
+            }
+
+            body.has-connection-status .connection-status {
+                display: block;
+                top: 70px;  /* Move below header on mobile */
+                background-color: rgba(255, 255, 255, 0.9);
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+        }
+
+        .menu-button {
+            width: 24px;
+            height: 18px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            cursor: pointer;
+            z-index: 1000;
+        }
+
+        .menu-button span {
+            width: 100%;
+            height: 3px;
+            background-color: #333;
+            border-radius: 2px;
+            transition: all 0.3s ease-in-out;
+        }
+
+        .menu-overlay {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            width: 250px;
+            background-color: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease-in-out;
+            z-index: 999;
+        }
+
+        .menu-overlay.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .menu-content ul {
+            list-style: none;
+            padding: 8px 0;
+        }
+
+        .menu-content ul li {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+        }
+
+        .team-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 12px;
+        }
+
+        .separator {
+            height: 1px;
+            background-color: #e0e0e0;
+            margin: 8px 0;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+        {% block additional_styles %}{% endblock %}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title", onclick="location.href='/';">BuzzPi</div>
+        {% if request.resolver_match.url_name == 'home' or request.resolver_match.url_name == 'admin' %}
+            <div class="header-center">
+                <div class="connection-status" id="connection-status">Connecting...</div>
+            </div>
+        {% endif %}
+        <div class="header-right">
+            {% if user.is_authenticated %}
+                <div class="user-status logged-in">
+                    Signed in as {{ user.username }}
+                </div>
+            {% endif %}
+            <div class="menu-button" onclick="toggleMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="menu-overlay">
+        <div class="menu-content">
+            <ul>
+                {% if request.resolver_match.url_name == 'home' %}
+                    {% for team in teams %}
+                    <li onclick="selectTeam({{ team.id }}, '{{ team.name }}', '{{ team.color }}')">
+                        <span class="team-color" style="background-color: {{ team.color }}"></span>
+                        Team {{ team.name }}
+                    </li>
+                    {% endfor %}
+                    <div class="separator"></div>
+                    <li onclick="resetBuzzer()" id="reset-button">Reset Buzzer</li>
+                {% endif %}
+                <li onclick="location.href='/';">Home</li>
+                <li onclick="location.href='/about/';">About</li>
+                {% if user.is_authenticated %}
+                    <li onclick="location.href='/admin/';">Admin Panel</li>
+                    <li onclick="location.href='/logout/';" style="color: #dc3545;">Sign Out</li>
+                {% else %}
+                    <li onclick="location.href='/login/';">Sign In</li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+
+    {% block content %}{% endblock %}
+
+    <script>
+        function toggleMenu() {
+            const menuButton = document.querySelector('.menu-button');
+            const menuOverlay = document.querySelector('.menu-overlay');
+            menuButton.classList.toggle('active');
+            menuOverlay.classList.toggle('active');
+        }
+
+        document.addEventListener('click', function(event) {
+            const menuButton = document.querySelector('.menu-button');
+            const menuOverlay = document.querySelector('.menu-overlay');
+            if (!menuButton.contains(event.target) && 
+                !menuOverlay.contains(event.target) && 
+                menuOverlay.classList.contains('active')) {
+                toggleMenu();
+            }
+        });
+    </script>
+    {% block additional_scripts %}{% endblock %}
+</body>
+</html>

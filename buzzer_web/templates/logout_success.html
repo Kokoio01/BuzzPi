@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}Logged Out - Team Buzzer System{% endblock %}
+
+{% block additional_styles %}
+.logout-container {
+    max-width: 400px;
+    margin: 40px auto;
+    padding: 20px;
+    text-align: center;
+}
+
+.logout-card {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.message {
+    font-size: 18px;
+    color: #28a745;
+    margin-bottom: 20px;
+}
+
+.home-link {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.home-link:hover {
+    text-decoration: underline;
+}
+{% endblock %}
+
+{% block content %}
+<div class="logout-container">
+    <div class="logout-card">
+        <div class="message">You have been successfully logged out</div>
+        <a href="/" class="home-link">Return to Home Page</a>
+    </div>
+</div>
+{% endblock %}

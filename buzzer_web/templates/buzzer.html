@@ -1,0 +1,426 @@
+{% extends 'base.html' %}
+
+{% block title %}Team Buzzer System{% endblock %}
+
+{% block additional_styles %}
+.buzzer-container {
+    width: 100%;
+    height: calc(100vh - 70px);
+    background-color: white;
+    position: relative;
+}
+
+.buzzer-button {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
+    background-color: #dc3545;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 40px;
+    font-size: 3em;
+    color: white;
+}
+
+.buzzer-button:hover {
+    transform: scale(1.02);
+    box-shadow: 0 6px 16px rgba(220, 53, 69, 0.3);
+}
+
+.buzzer-button:active {
+    transform: scale(0.98);
+}
+
+.buzzer-button.disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #333;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.toast.show {
+    opacity: 1;
+    visibility: visible;
+}
+{% endblock %}
+
+{% block content %}
+<div class="buzzer-container">
+    <button class="buzzer-button disabled" id="buzzer-button">
+        <span class="status-text" id="buzzer-status">Press</span>
+    </button>
+</div>
+<div class="toast" id="toast"></div>
+{% endblock %}
+
+{% block additional_scripts %}
+{% load static %}
+<script>
+    let socket = null;
+    let currentTeam = {
+        id: null,
+        name: null,
+        color: null
+    };
+    let buzzerEnabled = true;
+    var buzzerSound = new Audio("{% static 'audio/buzz.mp3' %}");
+
+    function initializeWebSocket() {
+        const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        socket = new WebSocket(`${wsScheme}://${window.location.host}/ws/buzzer/`);
+
+        socket.onopen = function() {
+            updateConnectionStatus('connected');
+            showToast('Connected to server');
+            requestInitialState();
+        };
+
+        socket.onclose = function() {
+            updateConnectionStatus('disconnected');
+            showToast('Connection lost. Reconnecting...');
+            setTimeout(initializeWebSocket, 3000);
+        };
+
+        socket.onerror = function(error) {
+            console.error('WebSocket error:', error);
+            showToast('Connection error');
+        };
+
+        socket.onmessage = function(event) {
+            try {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            } catch (error) {
+                console.error('Error parsing message:', error);
+            }
+        };
+    }
+
+    function requestInitialState() {
+        if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+                type: 'get_state'
+            }));
+        }
+    }
+
+    function handleWebSocketMessage(data) {
+        if (data.error) {
+            showToast(data.error);
+            return;
+        }
+
+        switch (data.type) {
+            case 'buzzer_type':
+                switch (data.action) {
+                    case 'buzz':
+                        handleBuzz(data);
+                        break;
+                    case 'reset':
+                        handleReset(data);
+                        break;
+                    default:
+                        console.log('Unknown buzzer type:', data);
+                }
+                break;
+            case 'state_update':
+                handleStateUpdate(data);
+                break;
+            case 'initial_state':
+                handleInitialState(data);
+                break;
+            case 'team_list':
+                updateTeamMenu(data.teams);
+                break;
+            case 'settings_update':
+                const resetButton = document.getElementById('reset-button');
+                if (resetButton) {
+                    if (data.settings?.allow_self_reset) {
+                        resetButton.classList.remove('hidden');
+                    } else {
+                        resetButton.classList.add('hidden');
+                    }
+                }
+                break;
+            default:
+                console.log('Unknown type:', data);
+        }
+    }
+
+    function updateTeamMenu(teams) {
+        const menuContent = document.querySelector('.menu-content ul');
+        const menuHtml = teams.map(team => `
+            <li onclick="selectTeam(${team.id}, '${team.name}', '${team.color}')">
+                <span class="team-color" style="background-color: ${team.color}"></span>
+                Team ${team.name}
+            </li>
+        `).join('');
+
+        // Keep only non-team menu items
+        const otherItems = Array.from(menuContent.children)
+            .filter(item => !item.hasAttribute('onclick') || !item.getAttribute('onclick').includes('selectTeam'));
+        
+        // Clear and rebuild menu
+        menuContent.innerHTML = menuHtml;
+        
+        // Add separator and other menu items back
+        if (teams.length > 0) {
+            menuContent.insertAdjacentHTML('beforeend', '<div class="separator"></div>');
+        }
+        otherItems.forEach(item => menuContent.appendChild(item.cloneNode(true)));
+
+        // Update current team if it still exists
+        if (currentTeam.id) {
+            const teamStillExists = teams.find(t => t.id === currentTeam.id);
+            if (!teamStillExists) {
+                currentTeam = { id: null, name: null, color: null };
+                const buzzerButton = document.getElementById('buzzer-button');
+                buzzerButton.style.backgroundColor = '#dc3545';
+                buzzerButton.style.color = '#ffffff';
+                buzzerButton.classList.add('disabled');
+                buzzerEnabled = false;
+                showToast('Your team was removed');
+            }
+        }
+    }
+
+    function handleInitialState(data) {
+        if (data.type !== 'initial_state') return;
+        
+        const activeBuzzers = data.active_buzzers || {};
+        const currentStatus = data.current_status;
+        const teams = data.teams || [];
+        const buzzerButton = document.getElementById('buzzer-button');
+
+        // Find the team that buzzed first
+        const buzzedTeam = Object.entries(activeBuzzers).find(([_, state]) => state.buzzer_pressed);
+
+        // Update current team if it exists in teams list
+        if (currentTeam.id) {
+            const selectedTeam = teams.find(team => team.id === currentTeam.id);
+            if (selectedTeam) {
+                currentTeam = {
+                    id: selectedTeam.id,
+                    name: selectedTeam.name,
+                    color: selectedTeam.color
+                };
+            }
+        }
+
+        // Handle buzzer state
+        if (buzzedTeam) {
+            const [teamId, teamState] = buzzedTeam;
+            buzzerButton.style.backgroundColor = teamState.color;
+            buzzerButton.style.color = getTextColor(teamState.color);
+            buzzerButton.innerText = parseInt(teamId) === currentTeam.id ? 
+                "Your Team Buzzed!" : 
+                `Team ${teamState.name} Buzzed!`;
+            buzzerButton.classList.add('disabled');
+            buzzerEnabled = false;
+        } else if (currentTeam.id) {
+            // No team has buzzed, but we have a selected team
+            buzzerButton.style.backgroundColor = currentTeam.color;
+            buzzerButton.style.color = getTextColor(currentTeam.color);
+            buzzerButton.innerText = "Press";
+            buzzerButton.classList.remove('disabled');
+            buzzerEnabled = true;
+        } else {
+            // No team selected
+            resetBuzzerState();
+            buzzerButton.classList.add('disabled');
+            buzzerEnabled = false;
+        }
+
+        show_reset_button(data.settings?.allow_self_reset ?? true);
+
+    }
+    
+    function show_reset_button(value) {
+        const resetButton = document.getElementById('reset-button');
+        if (resetButton) {
+            if (value) {
+                resetButton.classList.remove('hidden');
+            } else {
+                resetButton.classList.add('hidden');
+            }
+        }
+    }
+
+    function handleBuzz(data) {
+        console.log('Buzz received:', data);
+        const buzzerButton = document.getElementById('buzzer-button');
+
+        buzzerButton.style.backgroundColor = data.color;
+        buzzerButton.style.color = getTextColor(data.color);
+        buzzerButton.classList.add('disabled');
+        buzzerEnabled = false;
+
+        if (data.team_id === currentTeam.id) {
+            buzzerButton.innerText = "Your Team Buzzed!";
+        } else {
+            buzzerButton.innerText = "Team " + data.team_name + " Buzzed!";
+        }
+        buzzerSound.play();
+    }
+
+    function handleReset(data) {
+        resetBuzzerState();
+        showToast('Buzzer has been reset');
+    }
+
+    function handleStateUpdate(data) {
+        const activeBuzzers = data.active_buzzers;
+        if (currentTeam.id && activeBuzzers[currentTeam.id]) {
+            disableBuzzer();
+        } else {
+            enableBuzzer();
+        }
+    }
+
+    function disableBuzzer() {
+        const buzzerButton = document.getElementById('buzzer-button');
+        buzzerButton.classList.add('disabled');
+        buzzerEnabled = false;
+    }
+
+    function enableBuzzer() {
+        const buzzerButton = document.getElementById('buzzer-button');
+        if (currentTeam.id) {
+            buzzerButton.classList.remove('disabled');
+            buzzerEnabled = true;
+        }
+    }
+
+    function selectTeam(teamId, teamName, teamColor) {
+        const buzzerButton = document.getElementById('buzzer-button');
+
+        if (currentTeam.id !== teamId) {
+            currentTeam = {
+                id: teamId,
+                name: teamName,
+                color: teamColor
+            };
+
+            buzzerButton.style.backgroundColor = teamColor;
+            buzzerButton.style.color = getTextColor(teamColor);
+            buzzerButton.classList.remove('disabled');
+
+            requestInitialState();
+            showToast(`Selected Team ${teamName}`);
+        }
+
+        toggleMenu();
+    }
+
+    function buzz() {
+        if (!buzzerEnabled || !currentTeam.id) {
+            return;
+        }
+
+        socket.send(JSON.stringify({
+            type: 'buzz',
+            team_id: currentTeam.id,
+            color: currentTeam.color
+        }));
+    }
+
+    function resetBuzzer() {
+        if (currentTeam.id) {
+            socket.send(JSON.stringify({
+                type: 'reset',
+                team_id: currentTeam.id
+            }));
+        }
+        toggleMenu();
+    }
+
+    function resetBuzzerState() {
+        const buzzerButton = document.getElementById('buzzer-button');
+
+        if (currentTeam.id) {
+            buzzerButton.style.backgroundColor = currentTeam.color;
+            buzzerButton.style.color = getTextColor(currentTeam.color);
+        } else {
+            buzzerButton.style.backgroundColor = '#dc3545';
+            buzzerButton.style.color = '#ffffff';
+        }
+
+        buzzerButton.innerText = 'Press';
+        buzzerButton.classList.remove('disabled');
+        buzzerEnabled = true;
+    }
+
+    function updateConnectionStatus(status) {
+        const statusElement = document.getElementById('connection-status');
+        document.body.classList.add('has-connection-status');
+        statusElement.className = 'connection-status ' + status;
+        statusElement.innerText = status === 'connected' ? 'Connected' : 'Disconnected';
+    }
+
+    function showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.innerText = message;
+        toast.classList.add('show');
+
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+
+    function toggleMenu() {
+        const menuButton = document.querySelector('.menu-button');
+        const menuOverlay = document.querySelector('.menu-overlay');
+
+        menuButton.classList.toggle('active');
+        menuOverlay.classList.toggle('active');
+    }
+
+    function getTextColor(backgroundColor) {
+        let hex = backgroundColor.replace('#', '');
+        let r = parseInt(hex.substr(0, 2), 16);
+        let g = parseInt(hex.substr(2, 2), 16);
+        let b = parseInt(hex.substr(4, 2), 16);
+        
+        let brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        
+        return brightness < 128 ? '#ffffff' : '#000000';
+    }
+
+    document.getElementById('buzzer-button').addEventListener('click', buzz);
+
+    document.addEventListener('click', function(event) {
+        const menuButton = document.querySelector('.menu-button');
+        const menuOverlay = document.querySelector('.menu-overlay');
+
+        if (!menuButton.contains(event.target) &&
+            !menuOverlay.contains(event.target) &&
+            menuOverlay.classList.contains('active')) {
+            toggleMenu();
+        }
+    });
+
+    initializeWebSocket();
+</script>
+{% endblock %}
